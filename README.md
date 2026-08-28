@@ -7,8 +7,8 @@ Fully automated, enterprise-grade mailcow mail server on
 ```
 mailcow/
 ├── README.md                    <- this runbook (start here)
-├── .gitignore                   <- keeps real config/credentials out of git
-├── mailcow.env.example          <- project config template (copy to mailcow.env)
+├── .gitignore                   <- keeps generated secrets/keys out of git
+├── mailcow.env                  <- project config (hostname, IPs, user, SSH port, ...)
 ├── lib.sh                       <- shared helpers + mailcow.env loader
 ├── server-prep.sh               <- create sudo user, change SSH port, disable root SSH
 ├── deploy.sh                    <- one-shot installer (run on the VPS)
@@ -20,23 +20,26 @@ mailcow/
     ├── backup.sh                <- mailcow backup -> restic -> IDrive e2
     ├── restore.sh               <- restic -> local -> official restore tool
     ├── restic-check.sh          <- monthly repo health check
-    ├── mailcow-backup.env.example <- credentials/tuning (CHANGE_ME!)
+    ├── mailcow-backup.env       <- IDrive e2 credentials + restic password
     ├── mailcow-backup.service   <- systemd unit (oneshot)
     └── mailcow-backup.timer     <- daily 01:30 schedule
 ```
 
 **Configuration:** all project values (hostname, domain, IPs, VPS user, SSH
-port, timezone, install paths, firewall) live in one file - **`mailcow.env`**
-(copy of `mailcow.env.example`). Every script reads it; per-run environment
-variables and command-line flags take precedence. There is nothing to edit
-inside the scripts themselves.
+port, timezone, install paths, firewall) live in **`mailcow.env`**; backup
+credentials (IDrive e2, restic password) live in **`backup/mailcow-backup.env`**.
+Every script reads them directly - there is nothing to edit inside the
+scripts themselves. Per-run environment variables and command-line flags
+take precedence over the files.
 
-**Git / security:** this repository is safe to push to GitHub - it contains
-only `.example` templates with placeholder values (`CHANGE_ME_...`). The
-`.gitignore` blocks the real files (`mailcow.env`, `backup/mailcow-backup.env`,
-`mailcow.conf`, keys/certs, backups), so never `git add -f` those. The
-mailcow default admin password `moohoo` shown in the README is upstream's
-public default - change it immediately after first login.
+**Git / security:** `mailcow.env` and `backup/mailcow-backup.env` are tracked
+so a fresh clone works with no extra steps. **`backup/mailcow-backup.env`
+contains real IDrive e2 credentials and the restic password - keep this
+repository PRIVATE.** If it is or ever becomes public, rotate the E2 access
+key in the IDrive console and change the restic password. The `.gitignore`
+still blocks generated secrets (`mailcow.conf`, keys/certs, backup archives).
+The mailcow default admin password `moohoo` shown in the README is
+upstream's public default - change it immediately after first login.
 
 ---
 
@@ -87,14 +90,14 @@ Follow `dns-records.md`. Minimum set before install:
 ### 3a. Configure the project (once, on your workstation)
 
 ```bash
-cp mailcow.env.example mailcow.env
-nano mailcow.env      # hostname, domain, IPs, VPS_USER, SSH_PORT, TZ, paths
+nano mailcow.env                      # hostname, domain, IPs, VPS_USER, SSH_PORT, TZ, paths
+nano backup/mailcow-backup.env        # IDrive e2 credentials + restic password
 ```
 
-All values the scripts need live here - no hardcoded values inside the
-scripts. `SSH_PORT` also switches sshd in step 3c.
+All values the scripts need live in these two files - no hardcoded values
+inside the scripts. `SSH_PORT` also switches sshd in step 3c.
 
-### 3b. Get the kit onto the VPS & restore the config files
+### 3b. Get the kit onto the VPS
 
 **Option A - git clone (recommended).** From the VPS, as root:
 
@@ -105,23 +108,16 @@ git clone https://github.com/<your-user>/<your-repo>.git /root/mailcow
 cd /root/mailcow
 ```
 
+`mailcow.env` and `backup/mailcow-backup.env` are tracked in the repo, so
+the clone already contains your configuration - no extra steps. (Keep the
+repo **private**: `backup/mailcow-backup.env` holds real credentials.)
+
 **Option B - scp** (no GitHub needed):
 
 ```bash
 # workstation
 scp -r mailcow root@169.58.248.84:/root/
 ```
-
-> **IMPORTANT:** `mailcow.env` and `backup/mailcow-backup.env` are gitignored,
-> so they do NOT come with a `git clone` (with scp they do). Restore them
-> from your workstation before running anything:
->
-> ```bash
-> # workstation - push your real config to the VPS
-> scp mailcow.env backup/mailcow-backup.env root@169.58.248.84:/root/mailcow/
-> ```
->
-> Or recreate them on the VPS from the `.example` templates with `nano`.
 
 ### 3c. Create the sudo user & switch SSH to a secure port (as root)
 

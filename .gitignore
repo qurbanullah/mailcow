@@ -1,26 +1,24 @@
 # =============================================================================
 # mailcow deployment - .gitignore
 #
-# The repository contains only templates (mailcow.env.example,
-# mailcow-backup.env.example) with placeholder values - nothing here is
-# secret. The files below are REAL config / credentials that must NEVER be
-# committed.
+# mailcow.env and backup/mailcow-backup.env ARE tracked (they contain the
+# deployment configuration, so a fresh clone works with no extra steps).
+#
+# WARNING: backup/mailcow-backup.env holds your IDrive e2 credentials and
+# the restic password - keep this repository PRIVATE.
+#
+# The files below are generated secrets / keys that must never be committed.
 # =============================================================================
 
-# ---- project configuration (real values: IPs, SSH port, user ...) ----
-mailcow.env
-
-# ---- backup credentials (IDrive e2 access key/secret, restic password) ----
-backup/mailcow-backup.env
-
-# ---- generic environment files ----
+# ---- generic environment files (mailcow internals) ----
 .env
-*.env
-!*.env.example
 
 # ---- mailcow-generated config (contains DBPASS / DBROOT / REDISPASS) ----
 mailcow.conf
 mailcow.conf.*
+
+mailcow.env
+backup/mailcow-backup.env
 
 # ---- TLS certificates / private keys / SSH keys ----
 *.pem

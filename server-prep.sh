@@ -3,7 +3,7 @@
 # Prepare the VPS for mailcow: create a sudo user, copy SSH keys, change the
 # SSH port, and optionally disable root SSH login.
 #
-# Values (user, SSH port, IP) come from mailcow.env - see mailcow.env.example.
+# Values (user, SSH port, IP) come from mailcow.env.
 # Command-line flags below override the config file.
 #
 # Usage (run ON the VPS, as root):

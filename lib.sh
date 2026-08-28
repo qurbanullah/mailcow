@@ -4,7 +4,7 @@
 #
 # Sourced by: deploy.sh, server-prep.sh, firewall.sh, verify.sh
 #
-# Project config:  mailcow.env   (copy of mailcow.env.example, then edit)
+# Project config:  mailcow.env   (edit directly - it is part of the kit)
 #
 # Precedence for every value:
 #   1. environment variable already set when the script starts

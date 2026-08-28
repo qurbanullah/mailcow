@@ -22,10 +22,9 @@
 set -euo pipefail
 
 # --- shared helpers & project config (mailcow.env) -------------------------
-# Values are read from mailcow.env (cp mailcow.env.example mailcow.env);
-# everything below is only a fallback default. Per-run environment
-# variables (e.g. MAILCOW_TZ=Asia/Karachi sudo ./deploy.sh) win over the
-# config file.
+# Values are read from mailcow.env; everything below is only a fallback
+# default. Per-run environment variables (e.g. MAILCOW_TZ=Asia/Karachi
+# sudo ./deploy.sh) win over the config file.
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 load_project_config
 
@@ -239,6 +238,17 @@ install_backup_tooling() {
   local backup_src="${SCRIPT_DIR}/backup"
   [[ -d "${backup_src}" ]] || { warn "backup/ directory missing - skipping backup tooling"; return 0; }
 
+  # Fail with a clear message when the kit is incomplete (instead of a
+  # cryptic 'install: No such file or directory').
+  local required=(backup.sh restore.sh restic-check.sh mailcow-backup.env mailcow-backup.service mailcow-backup.timer)
+  local missing="" f src_env="${backup_src}/mailcow-backup.env"
+  for f in "${required[@]}"; do
+    [[ -f "${backup_src}/${f}" ]] || missing="${missing} ${f}"
+  done
+  if [[ -n "${missing}" ]]; then
+    die "backup/ tooling is incomplete on this host - missing:${missing}. Run 'git pull' (or re-copy the kit) and re-run deploy.sh."
+  fi
+
   mkdir -p "${BACKUP_DIR}" "${STAGING_DIR}"
   chmod 775 "${STAGING_DIR}"
 
@@ -246,23 +256,16 @@ install_backup_tooling() {
   install -m 0755 "${backup_src}/restore.sh"      "${BACKUP_DIR}/"
   install -m 0755 "${backup_src}/restic-check.sh" "${BACKUP_DIR}/"
 
-  # Prefer a real backup env prepared in this folder (it is gitignored);
-  # fall back to the example template with CHANGE_ME placeholders.
-  local src_env="${backup_src}/mailcow-backup.env"
-  [[ -f "${src_env}" ]] || src_env="${backup_src}/mailcow-backup.env.example"
+  # backup/mailcow-backup.env is the single source for the backup config
+  # (credentials are part of the repo - keep the repository private).
 
   if [[ ! -f "${BACKUP_DIR}/mailcow-backup.env" ]]; then
     install -m 0600 "${src_env}" "${BACKUP_DIR}/mailcow-backup.env"
-    if [[ "${src_env}" == *".example" ]]; then
-      info "installed placeholder mailcow-backup.env - edit it later: ${BACKUP_DIR}/mailcow-backup.env"
-    else
-      ok "installed your prepared mailcow-backup.env with real credentials"
-    fi
+    ok "installed mailcow-backup.env (${BACKUP_DIR}/mailcow-backup.env)"
   elif grep -q "CHANGE_ME" "${BACKUP_DIR}/mailcow-backup.env" 2>/dev/null && \
-       [[ -f "${backup_src}/mailcow-backup.env" ]] && \
-       ! grep -q "CHANGE_ME" "${backup_src}/mailcow-backup.env"; then
-    # server copy is still a placeholder, repo copy has real credentials -> upgrade
-    install -m 0600 "${backup_src}/mailcow-backup.env" "${BACKUP_DIR}/mailcow-backup.env"
+       ! grep -q "CHANGE_ME" "${src_env}"; then
+    # server copy still has placeholders, repo copy has real credentials -> upgrade
+    install -m 0600 "${src_env}" "${BACKUP_DIR}/mailcow-backup.env"
     ok "upgraded the placeholder backup env with your real credentials"
   else
     info "mailcow-backup.env already exists - not overwriting your credentials"
