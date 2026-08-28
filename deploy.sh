@@ -54,14 +54,10 @@ STAGING_DIR="${STAGING_DIR:-/var/backups/mailcow}"
 # Enable UFW firewall? (y/n)
 ENABLE_FIREWALL="${ENABLE_FIREWALL:-y}"
 
-# SSH port for the firewall rule: mailcow.env/env var > auto-detect from
-# sshd (recommended - keeps the firewall in sync when the port was changed
-# with server-prep.sh --ssh-port). Set explicitly to override.
+# Desired SSH port (mailcow.env / env). setup_firewall always opens the
+# port sshd ACTUALLY listens on (detected via sshd -T) so a mismatch can
+# never lock you out; if this value differs, both ports are opened.
 SSH_PORT="${SSH_PORT:-}"
-if [[ -z "${SSH_PORT}" ]]; then
-  SSH_PORT="$(sshd -T 2>/dev/null | awk '/^port[[:space:]]/ {print $2; exit}' || true)"
-  SSH_PORT="${SSH_PORT:-22}"
-fi
 # -------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
@@ -203,8 +199,20 @@ generate_config() {
 
 setup_firewall() {
   if [[ "${ENABLE_FIREWALL}" == "y" && -f "${SCRIPT_DIR}/firewall.sh" ]]; then
-    info "Configuring UFW firewall..."
-    bash "${SCRIPT_DIR}/firewall.sh" "${SSH_PORT}"
+    # The firewall MUST allow the port sshd actually listens on, otherwise a
+    # config mismatch locks you out (e.g. mailcow.env says 63521 but sshd is
+    # still on 22). When the desired port differs from reality, open both and
+    # tell the user to finish the move.
+    local actual=""
+    actual="$(sshd -T 2>/dev/null | awk '/^port[[:space:]]/ {print $2; exit}' || true)"
+    actual="${actual:-22}"
+    if [[ -n "${SSH_PORT}" && "${SSH_PORT}" != "${actual}" ]]; then
+      warn "mailcow.env sets SSH_PORT=${SSH_PORT} but sshd currently listens on ${actual} - opening BOTH in UFW."
+      warn "Finish the move with:  sudo ./server-prep.sh --ssh-port ${SSH_PORT}"
+      bash "${SCRIPT_DIR}/firewall.sh" "${actual}" "${SSH_PORT}"
+    else
+      bash "${SCRIPT_DIR}/firewall.sh" "${actual}"
+    fi
   else
     warn "Skipping UFW setup (ENABLE_FIREWALL != y) - open the mail ports in the Contabo panel firewall!"
   fi

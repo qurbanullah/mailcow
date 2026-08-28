@@ -270,11 +270,38 @@ banner, TLS certs, container health, watchdog, UI and the restic repository.
 
 ## 7. Day-to-day operations
 
+**Where things live on the VPS:**
+
+| Path | What it is |
+|---|---|
+| `/opt/mailcow-dockerized` | the mailcow stack (compose file + `mailcow.conf`) - **run all compose commands from here** |
+| `/opt/mailcow-backup` | backup scripts + credentials (`mailcow-backup.env`) |
+| `/var/backups/mailcow` | local backup staging area |
+
+> `deploy.sh` in this kit is the **installer** - run it once, and re-run it
+> only to reinstall or re-apply the backup tooling. It must NOT be used for
+> everyday changes. All normal operations use `docker compose` in
+> `/opt/mailcow-dockerized`:
+
+```bash
+cd /opt/mailcow-dockerized
+
+sudo docker compose ps                 # status
+sudo docker compose up -d              # start / apply config changes
+sudo docker compose down               # stop everything
+sudo docker compose restart            # restart all
+sudo docker compose logs -f --tail=200 # follow logs (or per container)
+```
+
+**Changing mailcow settings** (`TZ`, `WATCHDOG_NOTIFY_EMAIL`, ports, ...):
+edit `/opt/mailcow-dockerized/mailcow.conf`, then run
+`sudo docker compose up -d` — mailcow recreates the affected containers.
+
 | Task | Command |
 |---|---|
-| Status | `docker compose -f /opt/mailcow-dockerized/docker-compose.yml ps` |
+| Status | `cd /opt/mailcow-dockerized && sudo docker compose ps` |
 | Update mailcow | `cd /opt/mailcow-dockerized && sudo ./update.sh` |
-| Logs | `docker compose logs -f --tail=200` (or per container) |
+| Logs | `cd /opt/mailcow-dockerized && sudo docker compose logs -f --tail=200` |
 | Watchdog alerts | via `WATCHDOG_NOTIFY_EMAIL` (set it!) |
 | Manual backup | `sudo /opt/mailcow-backup/backup.sh` |
 | Backup status | `systemctl list-timers mailcow-backup.timer` ; `journalctl -u mailcow-backup.service -e` |
@@ -282,6 +309,12 @@ banner, TLS certs, container health, watchdog, UI and the restic repository.
 
 ## 8. Troubleshooting quick hits
 
+- **SSH: connection to port 63521 refused / port 22 hangs** → the firewall
+  and sshd disagree: `deploy.sh` configured UFW for the port in
+  `mailcow.env` before `server-prep.sh` actually moved sshd. From the
+  Contabo VNC console run `sudo ~/mailcow/server-prep.sh --ssh-port 63521`
+  (it moves sshd AND opens UFW itself). `deploy.sh` now opens the real
+  sshd port automatically, so this class of lockout can't recur.
 - **`docker pull` fails with "connection reset by peer"** (often on the IPv6
   address, e.g. `[2a02:...] -> [2606:...]`) → first just retry (`sudo docker
   compose pull` — deploy.sh now retries automatically). If it keeps failing,

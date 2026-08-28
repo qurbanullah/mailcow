@@ -111,10 +111,14 @@ change_ssh_port() {
     # sshd is started on demand and does not bind Port itself.
     info "ssh.socket is enabled - updating its listener..."
     install -d -m 755 /etc/systemd/system/ssh.socket.d
+    # Bind BOTH stacks explicitly: a bare ListenStream=port can come up
+    # IPv6-only (net.ipv6.bindv6only / systemd defaults), which silently
+    # refuses IPv4 clients -> "Connection refused".
     cat > /etc/systemd/system/ssh.socket.d/override.conf <<EOF
 [Socket]
 ListenStream=
-ListenStream=${port}
+ListenStream=0.0.0.0:${port}
+ListenStream=[::]:${port}
 EOF
     systemctl daemon-reload
     systemctl restart ssh.socket
