@@ -247,7 +247,7 @@ install_backup_tooling() {
 
   # Fail with a clear message when the kit is incomplete (instead of a
   # cryptic 'install: No such file or directory').
-  local required=(backup.sh restore.sh restic-check.sh mailcow-backup.env mailcow-backup.service mailcow-backup.timer)
+  local required=(backup.sh restore.sh restore-mailbox.sh restic-check.sh mailcow-backup.env mailcow-backup.service mailcow-backup.timer)
   local missing="" f src_env="${backup_src}/mailcow-backup.env"
   for f in "${required[@]}"; do
     [[ -f "${backup_src}/${f}" ]] || missing="${missing} ${f}"
@@ -261,6 +261,7 @@ install_backup_tooling() {
 
   install -m 0755 "${backup_src}/backup.sh"       "${BACKUP_DIR}/"
   install -m 0755 "${backup_src}/restore.sh"      "${BACKUP_DIR}/"
+  install -m 0755 "${backup_src}/restore-mailbox.sh" "${BACKUP_DIR}/"
   install -m 0755 "${backup_src}/restic-check.sh" "${BACKUP_DIR}/"
 
   # backup/mailcow-backup.env is the single source for the backup config

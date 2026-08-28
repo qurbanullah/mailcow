@@ -19,6 +19,7 @@ mailcow/
 └── backup/
     ├── backup.sh                <- mailcow backup -> restic -> IDrive e2
     ├── restore.sh               <- restic -> local -> official restore tool
+    ├── restore-mailbox.sh       <- restore a single mailbox
     ├── restic-check.sh          <- monthly repo health check
     ├── mailcow-backup.env       <- IDrive e2 credentials + restic password
     ├── mailcow-backup.service   <- systemd unit (oneshot)
@@ -258,6 +259,19 @@ sudo /opt/mailcow-backup/restore.sh <snapshot-id>  # download + start restore to
 The official interactive restore tool then lets you pick datasets (maildir,
 redis, rspamd, postfix, SQL, …). **Restoring SQL/maildir overwrites live
 data.** Monthly DR drill: run `restic-check.sh --data` and a test restore.
+
+**Single mailbox restore** (no full restore needed):
+
+```bash
+sudo /opt/mailcow-backup/restore-mailbox.sh --list            # see snapshots
+sudo /opt/mailcow-backup/restore-mailbox.sh user@example.com  # latest snapshot
+sudo /opt/mailcow-backup/restore-mailbox.sh user@example.com <snapshot-id>
+```
+
+This extracts only that mailbox from `backup_vmail.tar.zst`, merges it into
+the live vmail volume (mail received after the snapshot is kept) and
+re-syncs dovecot indexes. If the mailbox account was deleted, recreate it in
+the mailcow UI first (accounts live in the DB, not in the backup).
 
 ## 6. Verification
 
