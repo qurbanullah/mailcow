@@ -65,11 +65,13 @@ if [[ -n "${SSH_PORT}" ]]; then
 fi
 
 # --- 1. create the user ----------------------------------------------------------
+USER_CREATED="n"
 if id "${USERNAME}" >/dev/null 2>&1; then
   ok "user ${USERNAME} already exists"
 else
   info "creating user ${USERNAME}..."
   useradd --create-home --shell /bin/bash "${USERNAME}"
+  USER_CREATED="y"
   ok "user ${USERNAME} created"
 fi
 
@@ -193,16 +195,27 @@ fi
 CONNECT_PORT="${SSH_PORT:-22}"
 echo
 echo "======================================================================"
-echo " VPS user setup finished"
+if [[ "${USER_CREATED}" == "y" ]]; then
+  echo " VPS user setup finished"
+else
+  echo " VPS hardening applied (no user changes)"
+fi
 echo "======================================================================"
 echo
-echo " Connect / copy files from your WORKSTATION:"
-echo "   ssh  -p ${CONNECT_PORT} ${USERNAME}@${IP}"
-echo "   scp  -P ${CONNECT_PORT} -r mailcow ${USERNAME}@${IP}:~/"
-echo
-echo " Then on the VPS:"
-echo "   cd ~/mailcow && sudo ./deploy.sh"
-echo
-echo " After deploy: configure /opt/mailcow-backup/mailcow-backup.env"
-echo " (IDrive e2 credentials) and run:  sudo /opt/mailcow-backup/backup.sh"
+if [[ "${USER_CREATED}" == "y" ]]; then
+  echo " Connect / copy files from your WORKSTATION:"
+  echo "   ssh  -p ${CONNECT_PORT} ${USERNAME}@${IP}"
+  echo "   scp  -P ${CONNECT_PORT} -r mailcow ${USERNAME}@${IP}:~/"
+  echo
+  echo " Then on the VPS:"
+  echo "   cd ~/mailcow && sudo ./deploy.sh"
+  echo
+  echo " After deploy: configure /opt/mailcow-backup/mailcow-backup.env"
+  echo " (IDrive e2 credentials) and run:  sudo /opt/mailcow-backup/backup.sh"
+else
+  echo " Connect with:  ssh -p ${CONNECT_PORT} ${USERNAME}@${IP}"
+  if [[ "${DISABLE_ROOT_SSH}" == "y" ]]; then
+    echo " Root SSH login is DISABLED (PermitRootLogin no)."
+  fi
+fi
 echo "======================================================================"

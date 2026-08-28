@@ -92,3 +92,51 @@ dig +short -x 169.58.248.84        # PTR -> mail.htasol.net
 
 Or run the included `./verify.sh` on the server, which checks all of the above
 automatically.
+
+---
+
+## 6. Adding more mail domains (htashop.com, htasync.com, dresslefy.com, htasol.com, ...)
+
+Every additional domain hosted on this mail server needs the same set of
+records. For each domain (example uses `htashop.com`):
+
+| Type | Name | Value |
+|---|---|---|
+| MX | `@` | `mail.htasol.net.` priority `10` |
+| TXT | `@` | `v=spf1 mx a ip4:169.58.248.84 ~all` |
+| TXT | `_dmarc` | `v=DMARC1; p=quarantine; adkim=s; aspf=s; rua=mailto:postmaster@htasol.net; ruf=mailto:postmaster@htasol.net; fo=1; pct=100` |
+| TXT | `dkim._domainkey` | per-domain key from mailcow UI -> ARC/DKIM keys |
+| A | `autodiscover` | `169.58.248.84` (optional - Outlook auto-setup) |
+| A | `autoconfig` | `169.58.248.84` (optional - Thunderbird auto-setup) |
+
+> **Copy-paste warning:** copy ONLY the value - never the whole table row.
+> The `_dmarc` value must start exactly with `v=DMARC1` - pasting the row
+> syntax (`| | TXT | ...`) makes the record unparsable by strict DMARC
+> checkers. Clean values to paste:
+
+```
+MX        @          ->  mail.htasol.net.  (prio 10)
+TXT       @          ->  v=spf1 mx a ip4:169.58.248.84 ~all
+TXT       _dmarc     ->  v=DMARC1; p=quarantine; adkim=s; aspf=s; rua=mailto:postmaster@htasol.net; ruf=mailto:postmaster@htasol.net; fo=1; pct=100
+```
+
+**Before cutover check:**
+
+- Does the domain already have MX records (Google Workspace, Microsoft, old
+  host)? Changing MX moves ALL inbound mail to mailcow immediately - plan it.
+- Does it already have an SPF record (other senders)? Merge, do not overwrite
+  (keep existing `include:` / `ip4:` mechanisms).
+- Only ONE `v=spf1` TXT per domain - multiple SPF records fail SPF.
+- DKIM: each domain gets its own key in mailcow UI -> ARC/DKIM keys.
+
+Verify every domain:
+
+```bash
+for d in htashop.com htasync.com dresslefy.com htasol.com; do
+  echo "== $d"
+  dig +short MX $d
+  dig +short TXT $d | grep spf
+  dig +short TXT _dmarc.$d
+  dig +short TXT dkim._domainkey.$d | head -c 60; echo
+done
+```
