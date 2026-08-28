@@ -286,6 +286,13 @@ banner, TLS certs, container health, watchdog, UI and the restic repository.
 
 ## 8. Troubleshooting quick hits
 
+- **`docker pull` fails with "connection reset by peer"** (often on the IPv6
+  address, e.g. `[2a02:...] -> [2606:...]`) → first just retry (`sudo docker
+  compose pull` — deploy.sh now retries automatically). If it keeps failing,
+  the IPv6 path MTU is likely too small: probe with
+  `ping6 -M do -s 1472 -c 3 <registry-ip>` and if that fails lower the
+  interface MTU (netplan: `mtu: 1400` on eth0, then `sudo netplan apply`).
+  Keep IPv6 enabled — mailcow uses it for delivery.
 - **Gmail rejects/defers mail** → PTR set? SPF/DKIM/DMARC published? IP
   blacklisted (mxtoolbox)? Outbound 25 open from the VPS?
 - **Certificate not issuing** → port 80/443 reachable from outside; A record

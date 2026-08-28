@@ -214,7 +214,19 @@ setup_firewall() {
 start_stack() {
   cd "${INSTALL_DIR}"
   info "Pulling mailcow images (this can take several minutes)..."
-  docker compose pull
+  # flaky registries / IPv6 paths reset mid-transfer; retry a few times
+  local attempts=3 i
+  for ((i = 1; i <= attempts; i++)); do
+    if docker compose pull; then
+      break
+    fi
+    if (( i < attempts )); then
+      warn "image pull failed (attempt ${i}/${attempts}) - retrying in 15s..."
+      sleep 15
+    else
+      die "image pull failed after ${attempts} attempts - check network/IPv6 (see README troubleshooting)"
+    fi
+  done
   info "Starting mailcow..."
   docker compose up -d
   info "Waiting for containers to come up..."
