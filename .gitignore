@@ -1,0 +1,61 @@
+# =============================================================================
+# mailcow deployment - .gitignore
+#
+# The repository contains only templates (mailcow.env.example,
+# mailcow-backup.env.example) with placeholder values - nothing here is
+# secret. The files below are REAL config / credentials that must NEVER be
+# committed.
+# =============================================================================
+
+# ---- project configuration (real values: IPs, SSH port, user ...) ----
+mailcow.env
+
+# ---- backup credentials (IDrive e2 access key/secret, restic password) ----
+backup/mailcow-backup.env
+
+# ---- generic environment files ----
+.env
+*.env
+!*.env.example
+
+# ---- mailcow-generated config (contains DBPASS / DBROOT / REDISPASS) ----
+mailcow.conf
+mailcow.conf.*
+
+# ---- TLS certificates / private keys / SSH keys ----
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.asc
+*.gpg
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+.ssh/
+authorized_keys
+
+# ---- backup artifacts (mailbox data could end up here) ----
+*.tar
+*.tar.gz
+*.tgz
+*.tar.zst
+*.zst
+*.zip
+
+# ---- logs ----
+*.log
+
+# ---- OS / editor noise ----
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.idea/
+.vscode/

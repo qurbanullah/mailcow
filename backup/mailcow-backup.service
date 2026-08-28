@@ -1,0 +1,19 @@
+[Unit]
+Description=mailcow backup to IDrive e2 via restic
+Documentation=file:/opt/mailcow-backup/backup.sh
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/mailcow-backup/backup.sh
+# Keep running as long as it takes (large mailboxes, slow upstream)
+TimeoutStartSec=0
+# Be nice to the mail server while the backup runs
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target

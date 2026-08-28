@@ -1,0 +1,14 @@
+[Unit]
+Description=Daily mailcow backup to IDrive e2 (restic)
+Requires=mailcow-backup.service
+
+[Timer]
+# Run every day at 01:30 server-local time
+OnCalendar=*-*-* 01:30:00
+# Catch up on missed runs (server was off, etc.)
+Persistent=true
+# Avoid colliding with other nightly jobs
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target
