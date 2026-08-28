@@ -15,6 +15,7 @@ mailcow/
 ├── firewall.sh                  <- UFW rules for mail + web ports
 ├── verify.sh                    <- post-deploy verification suite
 ├── sysctl-mailcow.conf          <- kernel tuning for mail load
+├── standard-mailboxes.md        <- which mailboxes/aliases to create per domain
 ├── dns-records.md               <- every DNS record you must create
 └── backup/
     ├── backup.sh                <- mailcow backup -> restic -> IDrive e2
