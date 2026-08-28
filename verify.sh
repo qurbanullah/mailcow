@@ -28,6 +28,12 @@ sec()  { echo; echo -e "\e[36m== $* ==\e[0m"; }
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Some checks need root (docker socket, root-only config files). Warn early
+# instead of failing with a cascade of confusing permission errors.
+if [[ ${EUID} -ne 0 ]]; then
+  warn "not running as root - container/backup checks may fail. Re-run with: sudo ./verify.sh"
+fi
+
 # ----------------------------------------------------------------------------
 sec "DNS"
 a="$(dig +short A "${MAIL_HOST}" 2>/dev/null | tail -n1)"
@@ -95,15 +101,19 @@ if echo "${out25}" | grep -q "220"; then ok "outbound 25 works: ${out25}"; else 
 # ----------------------------------------------------------------------------
 sec "TLS certificates (${MAIL_HOST})"
 for p in 443 993 465 587; do
-  out="$(echo | timeout 8 openssl s_client -connect "${IP}:${p}" -servername "${MAIL_HOST}" 2>/dev/null | openssl x509 -noout -subject -dates 2>/dev/null || true)"
+  # 587 (submission) and 25 use STARTTLS - the cert only appears after the
+  # upgrade, so openssl needs -starttls smtp there. 443/993/465 are implicit TLS.
+  starttls=""
+  [[ "${p}" == "587" || "${p}" == "25" ]] && starttls="-starttls smtp"
+  out="$(echo | timeout 8 openssl s_client -connect "${IP}:${p}" -servername "${MAIL_HOST}" ${starttls} 2>/dev/null | openssl x509 -noout -subject -dates 2>/dev/null || true)"
   if [[ -n "${out}" ]]; then ok "port ${p} certificate:"; echo "      $(echo "${out}" | tr '\n' ' ')"; else bad "no valid certificate on port ${p}"; fi
 done
 
 # ----------------------------------------------------------------------------
 sec "mailcow stack"
 if [[ -d "${MAILCOW_DIR}" ]]; then
-  cd "${MAILCOW_DIR}"
-  if have docker; then
+  if have docker && docker info >/dev/null 2>&1; then
+    cd "${MAILCOW_DIR}"
     docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E 'Up|NAME' | sed 's/^/  /' || true
     up_count="$(docker compose ps --format '{{.Status}}' 2>/dev/null | grep -c '^Up' || true)"
     total="$(docker compose ps --format '{{.Name}}' 2>/dev/null | wc -l)"
@@ -116,7 +126,7 @@ if [[ -d "${MAILCOW_DIR}" ]]; then
       bad "watchdog-mailcow is not running"
     fi
   else
-    warn "docker CLI not found"
+    warn "docker not accessible (run with sudo, or add your user to the docker group) - skipping container checks"
   fi
 else
   warn "${MAILCOW_DIR} not found - is mailcow installed?"
@@ -129,27 +139,29 @@ if [[ "${code}" == "200" || "${code}" == "301" || "${code}" == "302" ]]; then ok
 
 # ----------------------------------------------------------------------------
 sec "restic backup repository (IDrive e2)"
-if [[ -f "${BACKUP_DIR}/mailcow-backup.env" ]]; then
+if [[ -r "${BACKUP_DIR}/mailcow-backup.env" ]]; then
   # shellcheck source=/dev/null
   source "${BACKUP_DIR}/mailcow-backup.env"
-  if [[ "${RESTIC_PASSWORD:-}" == "CHANGE_ME"* ]]; then
+  if [[ "${RESTIC_PASSWORD:-}" == "CHANGE_ME"* || -z "${RESTIC_REPOSITORY:-}" ]]; then
     warn "backup credentials not configured yet - edit ${BACKUP_DIR}/mailcow-backup.env"
-  else
+  elif have docker && docker info >/dev/null 2>&1; then
     RESTIC_IMAGE="${RESTIC_IMAGE:-restic/restic:latest}"
     if timeout 60 docker run --rm \
-      -e "RESTIC_REPOSITORY=${RESTIC_REPOSITORY}" \
-      -e "RESTIC_PASSWORD=${RESTIC_PASSWORD}" \
-      -e "AWS_ACCESS_KEY_ID=${E2_ACCESS_KEY}" \
-      -e "AWS_SECRET_ACCESS_KEY=${E2_SECRET_KEY}" \
+      -e "RESTIC_REPOSITORY=${RESTIC_REPOSITORY:-}" \
+      -e "RESTIC_PASSWORD=${RESTIC_PASSWORD:-}" \
+      -e "AWS_ACCESS_KEY_ID=${E2_ACCESS_KEY:-}" \
+      -e "AWS_SECRET_ACCESS_KEY=${E2_SECRET_KEY:-}" \
       ${AWS_DEFAULT_REGION:+-e "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}"} \
       "${RESTIC_IMAGE}" snapshots --latest 1 --compact 2>/dev/null; then
       ok "restic repository reachable, latest snapshot listed above"
     else
       bad "restic repository not reachable / no snapshots yet - run: sudo ${BACKUP_DIR}/backup.sh"
     fi
+  else
+    warn "docker not accessible - skipping restic repo check (run with sudo)"
   fi
 else
-  warn "no backup config at ${BACKUP_DIR}/mailcow-backup.env"
+  warn "backup config not readable at ${BACKUP_DIR}/mailcow-backup.env (run with sudo)"
 fi
 
 # ----------------------------------------------------------------------------
