@@ -94,13 +94,38 @@ nano mailcow.env      # hostname, domain, IPs, VPS_USER, SSH_PORT, TZ, paths
 All values the scripts need live here - no hardcoded values inside the
 scripts. `SSH_PORT` also switches sshd in step 3c.
 
-### 3b. Upload as root, create the sudo user & switch SSH to a secure port
+### 3b. Get the kit onto the VPS & restore the config files
+
+**Option A - git clone (recommended).** From the VPS, as root:
 
 ```bash
-# workstation - initial upload (root still has access)
-scp -r mailcow root@169.58.248.84:/root/
+# VPS (as root) - git is needed for the clone
+apt-get update && apt-get install -y git
+git clone https://github.com/<your-user>/<your-repo>.git /root/mailcow
+cd /root/mailcow
+```
 
-# VPS (as root): create htasolnet, move sshd to the port from mailcow.env
+**Option B - scp** (no GitHub needed):
+
+```bash
+# workstation
+scp -r mailcow root@169.58.248.84:/root/
+```
+
+> **IMPORTANT:** `mailcow.env` and `backup/mailcow-backup.env` are gitignored,
+> so they do NOT come with a `git clone` (with scp they do). Restore them
+> from your workstation before running anything:
+>
+> ```bash
+> # workstation - push your real config to the VPS
+> scp mailcow.env backup/mailcow-backup.env root@169.58.248.84:/root/mailcow/
+> ```
+>
+> Or recreate them on the VPS from the `.example` templates with `nano`.
+
+### 3c. Create the sudo user & switch SSH to a secure port (as root)
+
+```bash
 cd /root/mailcow
 sudo ./server-prep.sh
 ```
@@ -124,7 +149,7 @@ cp -r /root/mailcow /home/htasolnet/
 chown -R htasolnet:htasolnet /home/htasolnet/mailcow
 ```
 
-### 3c. Deploy as the new user
+### 3d. Deploy as the new user
 
 ```bash
 ssh -p 63521 htasolnet@169.58.248.84
@@ -136,7 +161,7 @@ sudo ./deploy.sh
 and opens it in the firewall - nothing to configure for the port change.
 You can override any value per-run, e.g. `sudo MAILCOW_TZ=Asia/Karachi ./deploy.sh`.
 
-### 3d. Disable root SSH login (after you verified the new login!)
+### 3e. Disable root SSH login (after you verified the new login!)
 
 Open a **second terminal** and confirm you can log in as `htasolnet`
 (`ssh -p 63521 htasolnet@169.58.248.84`). Only then:
@@ -155,14 +180,15 @@ current session open until you are sure the new login works.
 `deploy.sh` (idempotent — safe to re-run) will:
 
 1. install Docker ≥ 24 + compose plugin (Debian/Ubuntu via get.docker.com)
-2. apply `sysctl-mailcow.conf` tuning
-3. clone mailcow to `/opt/mailcow-dockerized`
-4. generate `mailcow.conf` **non-interactively** via the official
+2. set the system timezone to `SERVER_TZ` (default UTC - industry standard)
+3. apply `sysctl-mailcow.conf` tuning
+4. clone mailcow to `/opt/mailcow-dockerized`
+5. generate `mailcow.conf` **non-interactively** via the official
    `generate_config.sh` (env-var driven: hostname, timezone, branch, DB
    passwords, `DOCKER_COMPOSE_VERSION=native`)
-5. configure UFW (SSH + 25, 80, 443, 465, 587, 143, 993, 110, 995, 4190)
-6. `docker compose pull && docker compose up -d`
-7. install backup tooling to `/opt/mailcow-backup` + enable the daily timer
+6. configure UFW (SSH + 25, 80, 443, 465, 587, 143, 993, 110, 995, 4190)
+7. `docker compose pull && docker compose up -d`
+8. install backup tooling to `/opt/mailcow-backup` + enable the daily timer
 
 > Container-published ports (25, 80, 443, …) bypass UFW through Docker's own
 > iptables chains — that is expected and correct. UFW protects the host

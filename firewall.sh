@@ -14,7 +14,7 @@
 set -euo pipefail
 
 # --- shared helpers & project config (mailcow.env) -------------------------
-source "$(cd "$(dirname "${BASH_SOURCE[0]}") && pwd")/lib.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 load_project_config
 
 # SSH port: command-line argument > mailcow.env / env > 22

@@ -9,7 +9,7 @@
 set -uo pipefail
 
 # --- shared helpers & project config (mailcow.env) -------------------------
-source "$(cd "$(dirname "${BASH_SOURCE[0]}") && pwd")/lib.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 load_project_config
 
 DOMAIN="${DOMAIN:-htasol.net}"

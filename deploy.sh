@@ -26,7 +26,7 @@ set -euo pipefail
 # everything below is only a fallback default. Per-run environment
 # variables (e.g. MAILCOW_TZ=Asia/Karachi sudo ./deploy.sh) win over the
 # config file.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}") && pwd")/lib.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 load_project_config
 
 # ------------------------------- DEFAULTS -------------------------------
