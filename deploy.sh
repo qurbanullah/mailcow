@@ -59,7 +59,6 @@ ENABLE_FIREWALL="${ENABLE_FIREWALL:-y}"
 # never lock you out; if this value differs, both ports are opened.
 SSH_PORT="${SSH_PORT:-}"
 # -------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCH="$(uname -m)"

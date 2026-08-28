@@ -49,11 +49,11 @@ run_restic snapshots
 
 echo
 echo "==> latest snapshot"
-run_restic snapshots --latest --compact
+run_restic snapshots --latest 1 --compact
 
 echo
 echo "==> size of latest snapshot"
-run_restic stats --latest
+run_restic stats --latest 1
 
 echo
 if [[ "${1:-}" == "--data" ]]; then

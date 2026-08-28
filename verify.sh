@@ -142,7 +142,7 @@ if [[ -f "${BACKUP_DIR}/mailcow-backup.env" ]]; then
       -e "AWS_ACCESS_KEY_ID=${E2_ACCESS_KEY}" \
       -e "AWS_SECRET_ACCESS_KEY=${E2_SECRET_KEY}" \
       ${AWS_DEFAULT_REGION:+-e "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}"} \
-      "${RESTIC_IMAGE}" snapshots --latest --compact 2>/dev/null; then
+      "${RESTIC_IMAGE}" snapshots --latest 1 --compact 2>/dev/null; then
       ok "restic repository reachable, latest snapshot listed above"
     else
       bad "restic repository not reachable / no snapshots yet - run: sudo ${BACKUP_DIR}/backup.sh"

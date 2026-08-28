@@ -135,4 +135,4 @@ find "${STAGING_DIR}"/mailcow-* -maxdepth 0 -mmin +$((LOCAL_KEEP_DAYS * 1440)) -
 
 # --- 5. summary -----------------------------------------------------------------
 log "Backup complete. Latest snapshots in the restic repository:"
-run_restic snapshots --latest --compact
+run_restic snapshots --latest 1 --compact
