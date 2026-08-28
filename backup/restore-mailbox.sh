@@ -80,9 +80,14 @@ EMAIL="${1:-}"
 SNAPSHOT_ID="${2:-latest}"
 
 case "${EMAIL}" in
-  --list|-l) run_restic snapshots --tag mailcow --compact; exit 0 ;;
+  --list|-l)
+    run_restic snapshots --tag mailcow --compact
+    echo
+    echo "Note: every snapshot contains ALL mail domains (the whole vmail volume)."
+    echo "The Host column is the mail server that created the backup, not a domain filter."
+    exit 0 ;;
   -h|--help) usage; exit 0 ;;
-  ""|"") usage >&2; exit 1 ;;
+  "") usage >&2; exit 1 ;;
 esac
 
 [[ "${EMAIL}" == *"@"* && "${EMAIL}" != @* ]] || die "invalid email: ${EMAIL} (expected user@example.com)"
